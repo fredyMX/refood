@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RedFood — Restaurante</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=DM+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+
+  <header class="top">
+    <div class="top-inner">
+      <button class="brand" data-go="menu" aria-label="Ir al menú"><span class="brand-mark">🔥</span><span>Red<span
+            style="color:var(--brand)">Food</span></span></button>
+      <nav class="links" id="nav-links"></nav>
+      <div class="top-actions" id="top-actions"></div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Vista: menú principal (pública) -->
+    <section id="view-menu">
+      <div class="hero">
+        <div class="eyebrow">RedFood · Cocina mexicana</div>
+        <h1>Hecho al momento,<br>servido con sazón.</h1>
+        <p>Explora nuestro menú, toca cualquier platillo para ver los detalles y pídelo a domicilio.</p>
+        <div class="filters">
+          <div class="search">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+              stroke-linecap="round">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+            <input id="menu-search" type="search" placeholder="Buscar platillo…" autocomplete="off">
+          </div>
+        </div>
+      </div>
+
+      <div class="shop">
+        <!-- Barra lateral de filtros -->
+        <aside class="fside" id="fside" aria-label="Filtros">
+          <div class="fbox">
+            <div class="fhead">Filtrar por precio</div>
+            <div class="fbody">
+              <input type="range" class="range" id="f-price" min="0" step="5" aria-label="Precio máximo">
+              <div class="price-label" id="f-price-label">Cualquier precio</div>
+              <div class="fsep"></div>
+              <label class="fopt" id="o-disc"><input type="checkbox" id="f-disc"><span class="box"></span><span
+                  class="txt">Con descuento</span><span class="cnt" id="c-disc"></span></label>
+              <label class="fopt" id="o-stock"><input type="checkbox" id="f-stock"><span class="box"></span><span
+                  class="txt">Ocultar agotados</span><span class="cnt" id="c-out"></span></label>
+            </div>
+          </div>
+          <div class="fbox">
+            <div class="fhead">Filtrar por categoría</div>
+            <div class="fbody" id="f-cats"></div>
+          </div>
+          <button type="button" class="btn btn-sm btn-block" id="f-clear">Limpiar filtros</button>
+        </aside>
+
+        <div class="results">
+          <div class="results-bar">
+            <div><b id="results-count"></b> <span class="muted" id="results-note"></span></div>
+            <div class="results-tools">
+              <button type="button" class="btn btn-sm filters-toggle" id="f-toggle">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                  stroke-linecap="round">
+                  <path d="M4 6h16M7 12h10M10 18h4" />
+                </svg>
+                Filtros <span class="fcount hidden" id="f-active"></span>
+              </button>
+              <label class="sort"><span class="muted">Ordenar:</span>
+                <select id="f-sort">
+                  <option value="relevancia">Recomendados</option>
+                  <option value="precio-asc">Precio: menor a mayor</option>
+                  <option value="precio-desc">Precio: mayor a menor</option>
+                  <option value="descuento">Mayor descuento</option>
+                  <option value="nombre">Nombre (A-Z)</option>
+                </select>
+              </label>
+            </div>
+          </div>
+          <div class="grid" id="food-grid"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Vista: panel del dueño (solo admin) -->
+    <section id="view-panel" class="panel hidden"></section>
+
+    <!-- Vista: mis pedidos (solo cliente) -->
+    <section id="view-orders" class="panel hidden"></section>
+  </main>
+
+  <footer>RedFood · Av. Juárez 128, Centro, CDMX · Pagos simulados con fines de demostración<br><span id="data-mode"
+      class="data-mode"></span></footer>
+
+  <!-- Carrito -->
+  <div class="drawer-backdrop" id="cart-backdrop"></div>
+  <aside class="drawer" id="cart-drawer" aria-label="Carrito de compra">
+    <div class="drawer-head">
+      <h2>Tu carrito</h2><button class="x" data-close-cart aria-label="Cerrar">×</button>
+    </div>
+    <div class="drawer-body" id="cart-body"></div>
+    <div class="drawer-foot" id="cart-foot"></div>
+  </aside>
+
+  <!-- Modal: detalle -->
+  <div class="overlay" id="detail-modal">
+    <div class="modal modal-lg" role="dialog" aria-modal="true"><button class="x detail-close" data-close
+        aria-label="Cerrar">×</button>
+      <div id="detail-content"></div>
+    </div>
+  </div>
+
+  <!-- Modal: iniciar sesión / crear cuenta -->
+  <div class="overlay" id="auth-modal">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <div>
+          <h2 id="auth-title">Bienvenido</h2>
+          <p>Accede para comprar y ver tus pedidos.</p>
+        </div><button class="x" data-close aria-label="Cerrar">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="notice hidden" id="auth-notice"></div>
+        <div class="tabs"><button data-auth-tab="login" class="active">Iniciar sesión</button><button
+            data-auth-tab="register">Crear cuenta</button></div>
+        <div class="form-error hidden" id="auth-error"></div>
+        <form id="login-form" novalidate>
+          <div class="field"><label for="li-email">Correo electrónico</label><input id="li-email" type="email"
+              autocomplete="email" required></div>
+          <div class="field"><label for="li-pass">Contraseña</label><input id="li-pass" type="password"
+              autocomplete="current-password" required></div>
+          <button class="btn btn-primary btn-block" type="submit">Entrar</button>
+          <p class="hint" style="margin:14px 0 0;text-align:center">¿No tienes cuenta? <button type="button"
+              class="link-btn" data-auth-tab="register">Créala aquí</button></p>
+        </form>
+        <form id="register-form" class="hidden" novalidate>
+          <div class="field"><label for="re-name">Nombre completo</label><input id="re-name" autocomplete="name"
+              required><span class="err">Escribe tu nombre.</span></div>
+          <div class="field"><label for="re-email">Correo electrónico</label><input id="re-email" type="email"
+              autocomplete="email" required><span class="err">Escribe un correo válido.</span></div>
+          <div class="row2">
+            <div class="field"><label for="re-pass">Contraseña</label><input id="re-pass" type="password"
+                autocomplete="new-password" required><span class="err">Mínimo 6 caracteres.</span></div>
+            <div class="field"><label for="re-pass2">Confirmar</label><input id="re-pass2" type="password"
+                autocomplete="new-password" required><span class="err">No coincide.</span></div>
+          </div>
+          <button class="btn btn-primary btn-block" type="submit">Crear cuenta y entrar</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: dirección -->
+  <div class="overlay" id="address-modal">
+    <div class="modal modal-md" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <div>
+          <h2>Dirección de entrega</h2>
+          <p>A dónde llevamos tu pedido.</p>
+        </div><button class="x" data-close aria-label="Cerrar">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="notice hidden" id="address-notice"></div>
+        <form id="address-form" novalidate>
+          <div class="field"><label for="ad-street">Calle y número</label><input id="ad-street"
+              autocomplete="address-line1" placeholder="Ej. Calle Morelos 45, int. 3"><span class="err">Campo
+              obligatorio.</span></div>
+          <div class="row2">
+            <div class="field"><label for="ad-col">Colonia</label><input id="ad-col" placeholder="Ej. Roma Norte"><span
+                class="err">Campo obligatorio.</span></div>
+            <div class="field"><label for="ad-zip">Código postal</label><input id="ad-zip" inputmode="numeric"
+                maxlength="5" autocomplete="postal-code" placeholder="06700"><span class="err">5 dígitos.</span></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label for="ad-city">Ciudad / Alcaldía</label><input id="ad-city"
+                autocomplete="address-level2" placeholder="Cuauhtémoc"><span class="err">Campo obligatorio.</span></div>
+            <div class="field"><label for="ad-state">Estado</label><input id="ad-state" autocomplete="address-level1"
+                placeholder="CDMX"><span class="err">Campo obligatorio.</span></div>
+          </div>
+          <div class="field"><label for="ad-phone">Teléfono de contacto</label><input id="ad-phone" inputmode="tel"
+              autocomplete="tel" placeholder="10 dígitos"><span class="err">Escribe 10 dígitos.</span></div>
+          <div class="field"><label for="ad-refs">Referencias <small>(opcional)</small></label><input id="ad-refs"
+              placeholder="Ej. Portón negro, frente al parque"></div>
+          <div class="modal-foot"><button type="button" class="btn" data-close>Cancelar</button><button
+              class="btn btn-primary" type="submit">Guardar dirección</button></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: agregar / editar comida (dueño) -->
+  <div class="overlay" id="food-modal">
+    <div class="modal modal-md" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <div>
+          <h2 id="food-title">Agregar comida</h2>
+          <p>Los cambios se reflejan al instante en el menú.</p>
+        </div><button class="x" data-close aria-label="Cerrar">×</button>
+      </div>
+      <div class="modal-body">
+        <form id="food-form" novalidate>
+          <div class="field"><label for="fd-name">Nombre</label><input id="fd-name" maxlength="60"
+              placeholder="Ej. Tacos de suadero"><span class="err">Escribe el nombre de la comida.</span></div>
+          <div class="row2">
+            <div class="field"><label for="fd-cat">Categoría</label><select id="fd-cat"></select></div>
+            <div class="field"><label for="fd-emoji">Ícono <small>(si no hay foto)</small></label><select
+                id="fd-emoji"></select></div>
+          </div>
+          <div class="field"><label for="fd-desc">Descripción</label><textarea id="fd-desc" maxlength="400"
+              placeholder="Ingredientes, porción, cómo se sirve…"></textarea><span class="err">Agrega una
+              descripción.</span></div>
+          <div class="row2">
+            <div class="field"><label for="fd-price">Precio (MXN)</label><input id="fd-price" type="number" min="1"
+                step="0.5" placeholder="0.00"><span class="err">Precio mayor a 0.</span></div>
+            <div class="field"><label for="fd-stock">Stock disponible</label><input id="fd-stock" type="number" min="0"
+                step="1" placeholder="0"><span class="err">Número entero, 0 o más.</span></div>
+          </div>
+          <div class="discount-box">
+            <label class="switch"><input type="checkbox" id="fd-disc-on"><span class="track"></span>Activar
+              descuento</label>
+            <div id="fd-disc-fields" class="hidden">
+              <div class="field"><label for="fd-disc">Porcentaje de descuento</label><input id="fd-disc" type="number"
+                  min="1" max="90" step="1" placeholder="Ej. 15"><span class="err">Entre 1 y 90 %.</span></div>
+            </div>
+            <div class="preview-price" id="fd-preview"></div>
+          </div>
+          <div class="field">
+            <label>Foto <small>(opcional)</small></label>
+            <div class="img-pick">
+              <div class="thumb" id="fd-thumb"></div>
+              <div>
+                <input type="file" id="fd-file" accept="image/*" class="hidden">
+                <button type="button" class="btn btn-sm" id="fd-file-btn">Subir foto</button>
+                <button type="button" class="link-btn hidden" id="fd-file-clear" style="margin-left:8px">Quitar</button>
+              </div>
+            </div>
+          </div>
+          <div class="modal-foot"><button type="button" class="btn" data-close>Cancelar</button><button
+              class="btn btn-primary" type="submit" id="food-submit">Guardar</button></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: confirmación -->
+  <div class="overlay" id="confirm-modal">
+    <div class="modal" role="dialog" aria-modal="true" style="max-width:420px">
+      <div class="modal-head">
+        <div>
+          <h2 id="confirm-title">¿Seguro?</h2>
+        </div><button class="x" data-close aria-label="Cerrar">×</button>
+      </div>
+      <div class="modal-body">
+        <p id="confirm-text" style="margin:0 0 18px" class="muted"></p>
+        <div class="modal-foot"><button class="btn" data-close>Cancelar</button><button class="btn btn-danger"
+            id="confirm-ok">Eliminar</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: pago -->
+  <div class="overlay" id="checkout-modal">
+    <div class="modal modal-md" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <div>
+          <h2>Pagar pedido</h2>
+          <p>Revisa tu pedido y completa el pago.</p>
+        </div><button class="x" data-close aria-label="Cerrar">×</button>
+      </div>
+      <div class="modal-body">
+        <div id="checkout-summary"></div>
+        <div class="form-error hidden" id="pay-error"></div>
+        <form id="pay-form" novalidate>
+          <div class="field"><label for="pc-name">Nombre en la tarjeta</label><input id="pc-name"
+              autocomplete="cc-name"><span class="err">Campo obligatorio.</span></div>
+          <div class="card-row">
+            <div class="field"><label for="pc-num">Número de tarjeta</label><input id="pc-num" inputmode="numeric"
+                autocomplete="cc-number" placeholder="1234 5678 9012 3456" maxlength="19"><span class="err">16
+                dígitos.</span></div>
+            <div class="field"><label for="pc-exp">Vence</label><input id="pc-exp" inputmode="numeric"
+                autocomplete="cc-exp" placeholder="MM/AA" maxlength="5"><span class="err">Fecha inválida.</span></div>
+            <div class="field"><label for="pc-cvv">CVV</label><input id="pc-cvv" inputmode="numeric"
+                autocomplete="cc-csc" placeholder="123" maxlength="4"><span class="err">3 o 4 dígitos.</span></div>
+          </div>
+          <button class="btn btn-primary btn-block" type="submit" id="pay-submit">Pagar</button>
+          <p class="pay-note">🔒 Pago simulado: no se realiza ningún cargo real ni se guardan los datos de la tarjeta.
+          </p>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: comprobante -->
+  <div class="overlay" id="receipt-modal">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-head" style="justify-content:flex-end;padding-bottom:0"><button class="x" data-close
+          aria-label="Cerrar">×</button></div>
+      <div class="modal-body" id="receipt-content" style="padding-top:0"></div>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts"></div>
+
+  <script src="js/firebase-config.js"></script>
+  <script src="js/app.js"></script>
+</body>
+
+</html>
